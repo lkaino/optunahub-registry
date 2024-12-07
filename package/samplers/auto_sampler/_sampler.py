@@ -116,10 +116,10 @@ class AutoSampler(BaseSampler):
         trials = study._get_trials(
             deepcopy=False, states=(TrialState.COMPLETE, TrialState.PRUNED), use_cache=True
         )
-        if len(trials) == 0:
+        if len(trials) <= 2:
             return False
 
-        param_key = set(trials[0].params)
+        param_key = set(trials[1].params)
         return any(param_key != set(t.params) for t in trials)
 
     def _determine_multi_objective_sampler(
@@ -139,6 +139,28 @@ class AutoSampler(BaseSampler):
             return self._sampler
 
         seed = self._rng.rng.randint(_MAXINT32)
+
+        print(
+            "Using TPESampler because",
+            (
+                "constraints_func is not None"
+                if self._constraints_func is not None
+                else ""
+            ),
+            (
+                "or search space includes categorical parameters"
+                if any(
+                    isinstance(d, CategoricalDistribution)
+                    for d in search_space.values()
+                )
+                else ""
+            ),
+            (
+                "or study includes conditional parameters"
+                if self._include_conditional_param(study)
+                else ""
+            ),
+        )
         if (
             self._constraints_func is not None
             or any(isinstance(d, CategoricalDistribution) for d in search_space.values())
